@@ -87,6 +87,7 @@ import kirjanpito.db.Period;
 import kirjanpito.db.Settings;
 import kirjanpito.models.COAModel;
 import kirjanpito.models.CSVExportWorker;
+import kirjanpito.models.CSVImportWorker;
 import kirjanpito.models.DataSourceInitializationModel;
 import kirjanpito.models.DataSourceInitializationWorker;
 import kirjanpito.models.DocumentModel;
@@ -222,7 +223,6 @@ public class DocumentFrame extends JFrame implements AccountSelectionListener {
 			setIconImages(images);
 		}
 		catch (IOException e) { }
-
 		createMenuBar();
 		createToolBar();
 		createStatusBar();
@@ -509,6 +509,11 @@ public class DocumentFrame extends JFrame implements AccountSelectionListener {
 		menu.add(SwingUtils.createMenuItem("Vie tiedostoon",
 				null, 'V', null, exportListener));
 
+                
+                menu.add(SwingUtils.createMenuItem("Tuo tiedostosta",
+				null, 'X', null, importListener));
+                
+                
 		/* Luodaan Ohje-valikko. */
 		menu = new JMenu("Ohje");
 		menu.setMnemonic('O');
@@ -1241,7 +1246,7 @@ public class DocumentFrame extends JFrame implements AccountSelectionListener {
 			settings.set("csv-directory",
 					file.getParentFile().getAbsolutePath());
 
-			CSVExportWorker worker = new CSVExportWorker(registry, file);
+			CSVExportWorker worker = new CSVExportWorker(registry, file, model);
 			TaskProgressDialog dialog = new TaskProgressDialog(
 					this, "CSV-tiedostoon vienti", worker);
 			dialog.create();
@@ -1249,7 +1254,51 @@ public class DocumentFrame extends JFrame implements AccountSelectionListener {
 			worker.execute();
 		}
 	}
+        /*Tuo viennit tiedostosta */
+        public void importFile() {
+		AppSettings settings = AppSettings.getInstance();
+		String path = settings.getString("csv-directory", ".");
+		JFileChooser fc = new JFileChooser(path);
+		fc.setFileFilter(new FileFilter() {
+			public boolean accept(File file) {
+				return file.isDirectory() || file.getName().endsWith(".csv");
+			}
 
+			public String getDescription() {
+				return "CSV-tiedostot";
+			}
+		});
+
+		if (fc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+			File file = fc.getSelectedFile();
+			settings.set("csv-directory",
+					file.getParentFile().getAbsolutePath());
+
+			CSVImportWorker worker = new CSVImportWorker(registry, file);
+			TaskProgressDialog dialog = new TaskProgressDialog(
+					this, "CSV-tiedoston tuonti", worker);
+			dialog.create();
+			dialog.setVisible(true);
+			worker.execute();
+		}
+                //haetaan tositteet
+                /*try {
+				model.fetchDocuments(36);
+			}
+			catch (DataAccessException e) {
+				String message = "Tositteiden hakeminen epäonnistui";
+				logger.log(Level.SEVERE, message, e);
+				SwingUtils.showDataAccessErrorMessage(this, e, message);
+				return;
+			}
+                        //updatePosition();
+			updateDocument();
+			updateTotalRow();
+                */
+                //kokeillaa togglen avulla
+                toggleSearchPanel();
+                toggleSearchPanel();
+	}
 	/**
 	 * Päättää ALV-tilit.
 	 */
@@ -3044,6 +3093,13 @@ public class DocumentFrame extends JFrame implements AccountSelectionListener {
 		}
 	};
 
+        /* Tuo */
+	private ActionListener importListener = new ActionListener() {
+		public void actionPerformed(ActionEvent e) {
+			importFile();
+                        refreshModel(false);
+		}
+	};
 	/* Tilikartta */
 	private ActionListener chartOfAccountsListener = new ActionListener() {
 		public void actionPerformed(ActionEvent e) {
@@ -3184,6 +3240,7 @@ public class DocumentFrame extends JFrame implements AccountSelectionListener {
 	private ActionListener editReportsListener = new ActionListener() {
 		public void actionPerformed(ActionEvent e) {
 			editReports();
+                   
 		}
 	};
 
