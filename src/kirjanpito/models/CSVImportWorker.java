@@ -5,10 +5,13 @@
  */
 package kirjanpito.models;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -57,7 +60,7 @@ public class CSVImportWorker extends SwingWorker<Void, Void> {
 		try {
 			sess = dataSource.openSession();
 			//export(sess);
-                        importFromFile(sess);
+                        importFromFile3(sess);
 			sess.commit();
 		}
 		catch (Exception e) {
@@ -70,8 +73,131 @@ public class CSVImportWorker extends SwingWorker<Void, Void> {
 		}
 		
 		return null;
-	}
+	
+        }
+        /*lataa tiedosto ja syötä rivit debettinä. Ensinnäinen kenttä on rahamäärä, toinen kenttä on kuvaus*/
+        private void importFromFile3(Session sess)throws IOException, DataAccessException{
+            DataSource dataSource = registry.getDataSource();
+		Period period = registry.getPeriod();
+		
+                if (period.isLocked()) {
+			throw new RuntimeException("Tilikausi on lukittu");
+		}
+                Document newDocument ;
+                EntryDAO entryDAO;
+                int rivinumero = 1;
+        try {
+
+
+            BufferedReader b = new BufferedReader(new FileReader(file));
+
+            String readLine = "";
+
+            System.out.println("Reading file using Buffered Reader");
+            ;
+            
+                try {
+			sess = dataSource.openSession();
+			entryDAO = dataSource.getEntryDAO(sess);
+                        DocumentDAO d =dataSource.getDocumentDAO(sess);
+			
+                        newDocument = d.create(1, 0, 99);
+                        newDocument.setDate(Date.from(Instant.now()));
+                        d.save(newDocument);
+                        
+			
+			while ((readLine = b.readLine()) != null) {
+                            String[] osat = readLine.split(";");
+                        Entry e1 = new Entry();
+                        e1.setDocumentId(newDocument.getId());//tositteen tunniste
+                        e1.setAccountId(47); //tilin tunniste
+                        e1.setDebit(true);
+                        e1.setAmount(new BigDecimal(osat[0]));
+                        e1.setDescription(osat[1]);
+                        e1.setRowNumber(rivinumero);
+                        rivinumero += 1;
+                        e1.setFlags(0);
+                        entryDAO.save(e1);
+			}
+
+			sess.commit();
+		}
+		catch (DataAccessException e) {
+			if (sess != null) sess.rollback();
+			throw e;
+		}
+		finally {
+			if (sess != null) sess.close();
+		}
+            
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         
+        }
+        
+        private void importFromFile2(Session sess)throws IOException, DataAccessException{
+            DataSource dataSource = registry.getDataSource();
+		Period period = registry.getPeriod();
+		
+                if (period.isLocked()) {
+			throw new RuntimeException("Tilikausi on lukittu");
+		}
+                Document newDocument ;
+                EntryDAO entryDAO;
+                int rivinumero = 1;
+        try {
+
+
+            BufferedReader b = new BufferedReader(new FileReader(file));
+
+            String readLine = "";
+
+            System.out.println("Reading file using Buffered Reader");
+            ;
+            
+                try {
+			sess = dataSource.openSession();
+			entryDAO = dataSource.getEntryDAO(sess);
+                        DocumentDAO d =dataSource.getDocumentDAO(sess);
+			
+                        newDocument = d.create(1, 0, 99);
+                        newDocument.setDate(Date.from(Instant.now()));
+                        d.save(newDocument);
+                        
+			
+			while ((readLine = b.readLine()) != null) {
+                        Entry e1 = new Entry();
+                        e1.setDocumentId(newDocument.getId());//tositteen tunniste
+                        e1.setAccountId(47); //tilin tunniste
+                        e1.setDebit(true);
+                        e1.setAmount(new BigDecimal(rivinumero));
+                        e1.setDescription("testisyöttö47");
+                        e1.setRowNumber(rivinumero);
+                        rivinumero += 1;
+                        e1.setFlags(0);
+                        entryDAO.save(e1);
+			}
+
+			sess.commit();
+		}
+		catch (DataAccessException e) {
+			if (sess != null) sess.rollback();
+			throw e;
+		}
+		finally {
+			if (sess != null) sess.close();
+		}
+            
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        
+        }
         private void importFromFile(Session sess) throws IOException,
 		DataAccessException {
 		
